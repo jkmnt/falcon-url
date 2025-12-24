@@ -1,0 +1,44 @@
+[build-system]
+requires = ["flit_core >=3.2,<4"]
+build-backend = "flit_core.buildapi"
+
+[project]
+name = "falcon-url"
+authors = [{ name = "jkmnt" }]
+readme = "README.md"
+requires-python = ">=3.12"
+license = { file = "LICENSE" }
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+dynamic = ["version", "description"]
+dependencies = ["falcon >= 4.0.2"]
+
+[project.urls]
+Source = "https://github.com/jkmnt/falcon-url"
+
+[tool.ruff]
+line-length = 89
+
+[tool.ruff.lint]
+select = [
+    "E",
+    "F",
+    "UP",
+    "B",
+    "ANN0",
+    "I",
+    "SLOT",
+    "ICN",
+    "FBT",
+    "C4",
+    "LOG",
+    "RET",
+    "INT",
+    "RUF",
+    "PLE",
+]
+
+ignore = ["SIM108", "FBT003", "RET504", "RET505", "E501", "RUF015", "UP035"]
