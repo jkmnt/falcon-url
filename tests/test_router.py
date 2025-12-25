@@ -235,8 +235,8 @@ def test_classic():
     router = Router()
     r = Resource()
 
-    classic_route = router.add_resource(Route("") / "base" / {"foo"}, r, typical_responder=r.on_get)
-    classic_route_sfx = router.add_resource(
+    classic_route = router.add_route(Route("") / "base" / {"foo"}, r, typical_responder=r.on_get)
+    classic_route_sfx = router.add_route(
         Route("") / "maze" / {"foo"}, r, typical_responder=r.on_get_sfx, suffix="sfx"
     )
     new_route = router.add(Route("") / "face" / {"moo"}, GET=r.on_get)

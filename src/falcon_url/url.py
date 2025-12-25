@@ -72,6 +72,10 @@ class Url:
             url += f"#{quote(self._frag)}"
         return url
 
+    def as_html(self):
+        """Render as HTML-safe string for direct inclusion in markup"""
+        return html.escape(self.as_str())
+
     def __getitem__(self, index_or_slice: int | slice):
         segments = self._segments[index_or_slice]
         if not isinstance(segments, tuple):
@@ -118,10 +122,6 @@ class Url:
         if other is self:
             return True
         return self.as_str() == other.as_str()
-
-    def __html__(self):
-        """Render as HTML-safe string for direct inclusion in markup"""
-        return html.escape(self.as_str())
 
     def with_location(self, location: str):
         """Make new URL with the location changed. Location is schema, netloc and port (
@@ -178,3 +178,4 @@ class Url:
         )
 
     __str__ = as_str
+    __html__ = as_html

@@ -7,9 +7,7 @@ from falcon.routing.compiled import CompiledRouter
 
 from .route import BoundRoute, Route
 
-type Responder[TReq: Request, TResp: Response, **P] = Callable[
-    Concatenate[TReq, TResp, P], None
-]
+type Responder[TReq: Request, TResp: Response, **P] = Callable[Concatenate[TReq, TResp, P], None]
 
 type AsgiResponder[TReq: AsgiRequest, TResp: AsgiResponse, **P] = Callable[
     Concatenate[TReq, TResp, P], None | Awaitable[None]
@@ -49,14 +47,12 @@ def _validate_responder(meth: str, handler: Callable[..., Any], route: Route):
 
     # req, resp should be positional or positional-or-keyword
     if not (
-        req.kind in (Parameter.POSITIONAL_ONLY, Parameter.POSITIONAL_OR_KEYWORD)
-        and req.default == Parameter.empty
+        req.kind in (Parameter.POSITIONAL_ONLY, Parameter.POSITIONAL_OR_KEYWORD) and req.default == Parameter.empty
     ):
         raise TypeError("wrong req parameter")
 
     if not (
-        resp.kind in (Parameter.POSITIONAL_ONLY, Parameter.POSITIONAL_OR_KEYWORD)
-        and resp.default == Parameter.empty
+        resp.kind in (Parameter.POSITIONAL_ONLY, Parameter.POSITIONAL_OR_KEYWORD) and resp.default == Parameter.empty
     ):
         raise TypeError("wrong resp parameter")
 
@@ -79,9 +75,7 @@ def _validate_responder(meth: str, handler: Callable[..., Any], route: Route):
         if anno == Parameter.empty:
             raise ValueError(f"missing type annotation for parameter {param.name}")
         if anno != arg._anno:
-            raise ValueError(
-                f"type annotation mismatch for parameter {param.name} ({anno} vs {arg._anno})"
-            )
+            raise ValueError(f"type annotation mismatch for parameter {param.name} ({anno} vs {arg._anno})")
 
 
 # TODO: support ASGI responders type ?
@@ -97,7 +91,9 @@ class Router[TReq: Request, TResp: Response](CompiledRouter):
         super().__init__()
         self._strict = strict
 
-    def add_resource[**P](
+    def add_route[
+        **P
+    ](
         self,
         route: Route | str,
         resource: object,
@@ -114,10 +110,17 @@ class Router[TReq: Request, TResp: Response](CompiledRouter):
         if not str(route).startswith("/"):
             raise ValueError(f"route must begin with slash ({route!s})")
 
+        if self._strict:
+            methods = super().map_http_methods(resource, **kwargs)
+            for http_method, responder in methods.items():
+                _validate_responder(http_method, responder, route)
+
         super().add_route(str(route), resource, **kwargs)
         return BoundRoute[P](route)
 
-    def add[**P](
+    def add[
+        **P
+    ](
         self,
         route: Route | str,
         *,
@@ -169,9 +172,7 @@ class Router[TReq: Request, TResp: Response](CompiledRouter):
                     try:
                         _validate_responder(http_method, responder, route)
                     except Exception as e:
-                        raise ValueError(
-                            f"Handler {responder} validation error: {e}"
-                        ) from e
+                        raise ValueError(f"Handler {responder} validation error: {e}") from e
             super().add_route(template, resource, _cooked=resps)
 
         return BoundRoute[P](route)
@@ -197,9 +198,7 @@ def inspect_routes(app: App):
     import falcon.inspect
 
     try:
-        falcon.inspect.register_router(type(app._router))(
-            lambda router: falcon.inspect.inspect_compiled_router(router)
-        )
+        falcon.inspect.register_router(type(app._router))(lambda router: falcon.inspect.inspect_compiled_router(router))
     except Exception:
         pass
 
