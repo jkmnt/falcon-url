@@ -2,15 +2,15 @@
 
 This is an extension to the [Falcon](https://github.com/falconry/falcon) web framework for all of us missing Flask-like `url_for`.
 
-Despite being REST-first framework, Falcon is good for traditional HTML too. Even json endpoints ocassionaly need to return hyperlinks.
-Lack of `url_for` really make the URL composing cumbersome and error-prone.
+Despite being a REST-first framework, Falcon is good for traditional HTML too. Even JSON endpoints occassionaly need to return hyperlinks.
+Lack of `url_for` really makes the URL composition cumbersome and error-prone.
 
-`falcon-url` provides custom router and a few classes representing URLs and routes.
-Router subclasses the Falcon's default one, augumenting a few methods. All routing is still handled by the Falcon.
+`falcon-url` provides a custom router and a few classes representing URLs and routes.
+Router subclasses the Falcon's default one, augmenting a few methods. Routing decisions are still handled by the Falcon.
 
 # Installation
 
-falcon-url is not on a PyPI yet. Download and install it locally.
+falcon-url is not on PyPI yet. Download and install it locally.
 
 # Basic usage
 
@@ -52,15 +52,15 @@ print(url.as_html()) # http://www.example.com/subapp/api/1/bar?a=1&amp;b=2&amp;c
 
 ```
 
-Router returns the route object as a by-product of route addition. Calling it with parameters produce the concrete URL object.
+The router returns the route object as a by-product of route addition. Calling it with parameters produces the concrete URL object.
 
-URL objects are immutable and behave similar to the `pathlib.Path` objects. They even overload the division operator same way.
+URL objects are immutable and behave similarly to the `pathlib.Path` objects. They even overload the division operator the same way.
 
 # Advanced usage
 
 ## Verification
 
-Pass `strict` flag to the router to verify the routes. Makes sense to enable it in debug mode of your app.
+Pass a `strict` flag to the router to verify the routes. It makes sense to enable it in debug mode of your app.
 
 ```python
 router = Router(strict=True)
@@ -68,14 +68,14 @@ router.add_route("/api/{thing_id:int}/{foo:int}", thing_ep)
 # ValueError: type annotation mismatch for parameter foo (<class 'str'> vs <class 'int'>)
 ```
 
-Router will check if responders arguments and route parameters match. It checks the names and types, so please type-annotate your arguments. All route-related arguments should be keyword-only.
+The router will check if the method arguments and route parameters match. It checks the names and types, so please type-annotate your arguments. All route-related arguments should be keyword-only.
 
-## Typechecking and IDE autocomplete
+## Typechecking and code editor autocomplete
 
-There is no way to obtain signature of responder from the resource class.
+There is no way to obtain the responder's signature from the resource class.
 But you could specify it manually. Your IDE will start to suggest parameters in a magical way.
 
-Also you may specialize the request and response type for more type-safety.
+Also you may specialize the request and response type for more type safety.
 
 ```python
 
@@ -87,13 +87,13 @@ url = thing_route(foo=1) # Argument missing for parameter "thing_id"
 
 ```
 
-## Explicit responders-methods mapping
+## Explicit responder-method mapping
 
 ```python
 thing_route = router.add("/api/{thing_id:int}/{foo}", GET=thing_ep.on_get, POST=thing_ep.on_post)
 ```
 
-This style of route registration is a good fit for HTML endpoints. You could map same form handler to both `GET` and `POST` methods and check the concrete method inside the responder body.
+This style of route registration is a good fit for HTML endpoints. You could the same form handler to both `GET` and `POST` verbs:
 
 ```python
  def on_getpost_create(self, req: Request, resp: Response):
@@ -110,16 +110,16 @@ This style of route registration is a good fit for HTML endpoints. You could map
     resp.text = render_some_html(form)
 ```
 
-Responders may belong the the different classes. Or even be standalone functions.
-Since reponders signatures are known, this style is typesafe out of the box.
+Responders may belong to the different classes. Or even be standalone functions.
+Since the responder signature is known, this style is typesafe out of the box.
 Also you may use it instead of the suffixed responders.
 
-_Side-note_: there are a lot of ways to generate HTML without Jinja or Django templates.
-See [htmf](github.com/jkmnt/htmf) project of mine :-)
+_Side note_: there are a lot of ways to generate HTML without Jinja or Django templates.
+See [htmf](https://github.com/jkmnt/htmf) project of mine :-)
 
 ## Object-oriented routes
 
-`pathlib.Path`strikes again:
+The `pathlib.Path` strikes again:
 
 ```python
 
@@ -142,15 +142,15 @@ router.add(api_root / param.Int("thing_id", max=12) / param.Str("foo"), GET=thin
 In fact, it's the internal representation of routes in `falcon-url`.
 The classic string templates are parsed into these route objects.
 
-You may use them directly to get more type-safety and reduce the parsing overhead.
+You may use them directly to get more type safety and reduce the parsing overhead.
 
 ## Passing routes around the app
 
-You are free to organize the routes store any way you like.
+You are free to organize the route store any way you like.
 
-The simplest way is to have a global registry dict.
+The simple way is to keep a global dict-based registry.
 
-The recommended way is to store them in your app instance and pass the reference to all endpoints:
+The recommended way is to store routes in your app instance and pass the reference to endpoints:
 
 ```python
 from falcon_url import RoutesCollection
@@ -184,7 +184,7 @@ class MyApp:
 
 ```
 
-Or, maybe, let endpoints manage their own routes ?
+Or, maybe, let endpoints manage their own routes?
 
 ```python
 class Ep:
@@ -205,35 +205,32 @@ class MyApp:
         self.endpoints = Endpoints
 ```
 
-This pattern allows to capture fully-typed route objects without 'identifiers' and other magic.
+This pattern allows us to capture fully-typed route objects without string 'identifiers' and other magic.
 
-See next topic for explanation why it's beneficial to base `Routes` on `RoutesCollection`.
+See next topic for an explanation of why it's beneficial to base `Routes` on `RoutesCollection`.
 
 # Subpath support
 
-If you need to host your app at some subpath, WSGI-compliant server will help you.
-Server strips the subpath prefix from the incoming requests, so your app routes are not affected.
+If you need to host your app at some subpath, any WSGI-compliant server have this feature built in.
+Basically, it strips the subpath prefix from the incoming requests, so your app routes are not affected.
 But now your app should append this prefix to the generated URLs in responses.
-Falcon exposes incoming subpath prefix via `Request.root_path` attribute.
-Yes, your URLs may vary depending on a request!
+Falcon exposes the subpath prefix via the `Request.root_path` attribute.
+Yes, your generated URLs may vary depending on a request!
 
-This simplest way is to set prefix manually via `URL.with_root`:
+You could set the prefix manually via `URL.with_root`. It's fine for managing just a few URLs.
 
 ```python
 def on_get(self, req: Request, resp: Response, *, thing_id: int):
     url = self.app.routes.another_ep(foo="bar").with_root(req.root_path)
 ```
 
-It works ok if you have just a few URLs to manage. If you need to render a lot of URLs in one response, it quicky
-becomes cumbersome.
-
-`falcon-url` provides a special support to make it easier.
-Routes in `RoutesCollection` _class_ are request-independent. Routes in the `RoutesCollection` class _instance_
+For more hyperlink-heavy responses, `falcon-url` has a feature to make it easier.
+Routes in the `RoutesCollection` _class_ are request-independent. Routes in the `RoutesCollection` class _instance_
 are request-specific.
 
 ```python
  def on_get(self, req: Request, resp: Response, *, thing_id: int):
-    # now these routes have root path of the request
+    # now these routes have the root_path of the request
     req_specific_routes = self.app.routes(root_path=req.root_path)
     # including this one
     route = req_specific_routes.another_ep(foo="bar")
@@ -241,15 +238,16 @@ are request-specific.
 
 ## Responders with extra non-route arguments
 
-You may have responders with extra arguments not related to the route, e.g. injected by the decorator.
+You may have responders with extra arguments not related to the route, for example, injected by the decorator.
 `falcon-url` (and typechecker) would complain about them.
-One way to silence complains is to move them to the kwargs:
+One way to silence complaints is to use the kwargs.
 
 ```python
+
 def on_get(self, req: Request, resp: Response, *, thing_id: int, foo: str, **kwargs: Any): ...
 ```
 
-The better way is to make the argument non-keyword and have a correctly typed decorator.
+Or make the argument non-keyword and have a correctly typed decorator.
 
 ```python
 
@@ -271,9 +269,9 @@ def on_get(self, req: Request, resp: Response, my_arg: MyArg, *, thing_id: int, 
 
 ## Query parameters
 
-You may get used to the Flask's `url_for` semantic of moving extra keywords in a query part of URL. It's a bad idea. You really should use `URL.with_query`.
+You may get used to Flask's `url_for` semantic of moving extra keywords in a query part of the URL. It's a bad idea. One shouldn't mix URL segments and parameters.
 
-If you have a lot of query parameters and want them to be type-safe, a recommended pattern is to wrap them in dataclass:
+If you have a lot of query parameters and want them to be type-safe, the recommended pattern is to use a dataclass:
 
 ```python
 @dataclass
@@ -304,7 +302,7 @@ route = router.add(Route("") / {"thing_id"}, GET=ep.on_get)
 url = route(thing_id="foo").with_query(**MyParams(1, 2, "bar").as_query())
 ```
 
-Later, if you decide parameters should be in request body, you'll just add another factory method to the `MyParams`:
+Bonus feature: if you decide later to pass parameters via request body, just add another factory method:
 
 ``` python
 
@@ -318,4 +316,4 @@ def from_json(cls, req: Request):
 
 ## ASGI support
 
-The typing for ASGI responders is on the roadmap. Meanwhile, in runtime everything should be fine.
+The typing for ASGI responders is on the roadmap. Meanwhile, at runtime everything should be fine.
