@@ -1,6 +1,6 @@
 """Falcon router with url_for-like support"""
 
-__version__ = "0.1.0"
+__version__ = "0.1.1"
 
 from . import param
 from .route import (
@@ -9,7 +9,7 @@ from .route import (
     RoutesCollection,
     RouteSegment,
 )
-from .router import Router, inspect_routes
+from .router import Router
 from .url import Url
 
 __all__ = [
@@ -19,6 +19,5 @@ __all__ = [
     "Router",
     "RoutesCollection",
     "Url",
-    "inspect_routes",
     "param",
 ]

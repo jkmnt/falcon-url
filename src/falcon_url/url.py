@@ -23,7 +23,7 @@ def _make_qs(args: Iterable[tuple[str, QArg | None]]):
         if isinstance(v, (str, int, float)):
             query.append((k, _tostr(v)))
         else:
-            if all(isinstance(elt, str | int | float) for elt in v):
+            if all(isinstance(elt, (str, int, float)) for elt in v):
                 query.extend([(k, _tostr(elt)) for elt in v])
 
     return query

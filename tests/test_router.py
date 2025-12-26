@@ -1,14 +1,20 @@
 # from __future__ import annotations
-import pytest
 import datetime
-from typing import Any
 import uuid
+from typing import Any
 
-from falcon_url import Router, param, Route, RoutesCollection
+import pytest
+
+import falcon
+import falcon.inspect
+from falcon_url import Route, Router, RoutesCollection, param
 
 
 def test_int():
-    assert str(param.Int("foo", min=1, max=10, num_digits=3)) == "{foo:int(3, min=1, max=10)}"
+    assert (
+        str(param.Int("foo", min=1, max=10, num_digits=3))
+        == "{foo:int(3, min=1, max=10)}"
+    )
 
     assert str(param.Int("foo", max=10, num_digits=-1)) == "{foo:int(-1, max=10)}"
 
@@ -18,9 +24,15 @@ def test_int():
 
 
 def test_float():
-    assert str(param.Float("foo", min=1, max=10, finite=True)) == "{foo:float(min=1, max=10)}"
+    assert (
+        str(param.Float("foo", min=1, max=10, finite=True))
+        == "{foo:float(min=1, max=10)}"
+    )
 
-    assert str(param.Float("foo", min=1, finite=False)) == "{foo:float(min=1, finite=False)}"
+    assert (
+        str(param.Float("foo", min=1, finite=False))
+        == "{foo:float(min=1, finite=False)}"
+    )
 
     assert str(param.Float("foo")) == "{foo:float}"
 
@@ -53,7 +65,10 @@ def test_route_kitchen():
     assert str(route) == "/foo/bar/{str1}/{int1:int}/sep/{float1:float}//{uuid1:uuid}/"
     uuid1 = uuid.uuid4()
 
-    assert str(route.as_url(str1="1", int1=2, float1=3.14, uuid1=uuid1)) == f"/foo/bar/1/2/sep/3.14//{ uuid1 }/"
+    assert (
+        str(route.as_url(str1="1", int1=2, float1=3.14, uuid1=uuid1))
+        == f"/foo/bar/1/2/sep/3.14//{uuid1}/"
+    )
 
     assert str(Route("")) == ""
 
@@ -76,7 +91,9 @@ def test_route_query():
 
     assert (
         str(
-            route.as_url(str1="1", int1=12).with_query(k1=True, k3=False, q=333, f="444", b=[1, 2, 3, 4, "bla"], z=None)
+            route.as_url(str1="1", int1=12).with_query(
+                k1=True, k3=False, q=333, f="444", b=[1, 2, 3, 4, "bla"], z=None
+            )
         )
         == "/foo/bar/1/12?k1=true&k3=false&q=333&f=444&b=1&b=2&b=3&b=4&b=bla"
     )
@@ -86,17 +103,28 @@ def test_route_frag():
     route = Route("") / "foo" / "bar" / param.Str("str1") / param.Int("int1")
     assert str(route) == "/foo/bar/{str1}/{int1:int}"
 
-    assert str(route.as_url(str1="1", int1=12).with_fragment(" 333")) == "/foo/bar/1/12#%20333"
+    assert (
+        str(route.as_url(str1="1", int1=12).with_fragment(" 333"))
+        == "/foo/bar/1/12#%20333"
+    )
 
     assert str(route.as_url(str1="1", int1=12).with_fragment("")) == "/foo/bar/1/12#"
 
 
 def test_partial_segments():
-    route = Route("") / ("foo", "bar_", param.Int("why"), ":", param.Uuid("uu"), "-baz") / "bar"
+    route = (
+        Route("")
+        / ("foo", "bar_", param.Int("why"), ":", param.Uuid("uu"), "-baz")
+        / "bar"
+    )
 
     assert str(route) == "/foobar_{why:int}:{uu:uuid}-baz/bar"
 
-    route = Route("") / ("foo" + "bar_" + param.Int("why") + ":" + param.Uuid("uu") + "-baz") / "bar"
+    route = (
+        Route("")
+        / ("foo" + "bar_" + param.Int("why") + ":" + param.Uuid("uu") + "-baz")
+        / "bar"
+    )
 
     assert str(route) == "/foobar_{why:int}:{uu:uuid}-baz/bar"
 
@@ -106,15 +134,21 @@ def test_prefix():
     url = route.as_url(str1="1", int1=12)
     assert str(url.as_str()) == "/foo/bar/1/12"
     assert str(url.with_root("/my-app").as_str()) == "/my-app/foo/bar/1/12"
-    assert str(url.with_location("http://www.example.com:8000").as_str()) == "http://www.example.com:8000/foo/bar/1/12"
     assert (
-        str(url.with_root("/my- app").with_location("http://www.example.com:8000").as_str())
+        str(url.with_location("http://www.example.com:8000").as_str())
+        == "http://www.example.com:8000/foo/bar/1/12"
+    )
+    assert (
+        str(
+            url.with_root("/my- app")
+            .with_location("http://www.example.com:8000")
+            .as_str()
+        )
         == r"http://www.example.com:8000/my-%20app/foo/bar/1/12"
     )
 
 
 def test_route_descriptor():
-
     class Resource:
         def __init__(self, mount: Route, router: Router):
             class Route(RoutesCollection):
@@ -143,7 +177,6 @@ def test_route_descriptor():
     assert with_req.post(bar=1).as_str() == "/app/base/deeper/1"
 
     class AllRoutes(RoutesCollection):
-
         class Deeper(RoutesCollection):
             resource = res.routes.desc()
 
@@ -161,7 +194,6 @@ def test_route_descriptor():
 
 
 def test_parse_template():
-
     class Resource:
         def on_get(self, req: Any, resp: Any, *, foo: str):
             return None
@@ -229,13 +261,15 @@ def test_classic():
         def on_get_sfx(self, req: Any, resp: Any, *, foo: str):
             return None
 
-        def on_post(self, req: Any, resp: Any, *, foo: int):
+        def on_post(self, req: Any, resp: Any, *, foo: str):
             return None
 
     router = Router()
     r = Resource()
 
-    classic_route = router.add_route(Route("") / "base" / {"foo"}, r, typical_responder=r.on_get)
+    classic_route = router.add_route(
+        Route("") / "base" / {"foo"}, r, typical_responder=r.on_get
+    )
     classic_route_sfx = router.add_route(
         Route("") / "maze" / {"foo"}, r, typical_responder=r.on_get_sfx, suffix="sfx"
     )
@@ -270,10 +304,14 @@ def test_validate():
     def on_get1(req: Any, resp: Any, *, foo: str, dt: datetime.datetime):
         return None
 
-    def on_get1_with_mw_injected(req: Any, resp: Any, injected: Any, *, foo: str, dt: datetime.datetime):
+    def on_get1_with_mw_injected(
+        req: Any, resp: Any, injected: Any, *, foo: str, dt: datetime.datetime
+    ):
         return None
 
-    def on_get_kwargs(req: Any, resp: Any, *, foo: str, dt: datetime.datetime, **kwargs: Any):
+    def on_get_kwargs(
+        req: Any, resp: Any, *, foo: str, dt: datetime.datetime, **kwargs: Any
+    ):
         return None
 
     def on_post1(req: Any, resp: Any, *, foo: int, bla: float):
@@ -284,17 +322,27 @@ def test_validate():
 
     router = Router(strict=True)
     router.add(Route("") / "base" / {"foo"} / {"dt": datetime.datetime}, POST=on_get1)
-    router.add(Route("") / "base" / {"foo"} / {"dt": datetime.datetime}, POST=on_get1_with_mw_injected)
-    router.add(Route("") / "base" / {"foo"} / {"dt": datetime.datetime}, POST=on_get_kwargs)
+    router.add(
+        Route("") / "base" / {"foo"} / {"dt": datetime.datetime},
+        POST=on_get1_with_mw_injected,
+    )
+    router.add(
+        Route("") / "base" / {"foo"} / {"dt": datetime.datetime}, POST=on_get_kwargs
+    )
     router.add(Route("") / "face" / {"foo": int} / {"bla": float}, POST=on_post1)
-    router.add(Route("") / "face" / {"foo": int} / {"bla": float} / {"rest": param.Path}, POST=on_post2)
+    router.add(
+        Route("") / "face" / {"foo": int} / {"bla": float} / {"rest": param.Path},
+        POST=on_post2,
+    )
 
     with pytest.raises(ValueError, match="name must begin with on_"):
 
         def non_get1(req: Any, resp: Any, *, foo: str, dt: datetime.datetime):
             return None
 
-        router.add(Route("") / "base" / {"foo"} / {"dt": datetime.datetime}, POST=non_get1)
+        router.add(
+            Route("") / "base" / {"foo"} / {"dt": datetime.datetime}, POST=non_get1
+        )
 
     with pytest.raises(ValueError, match="no matching argument"):
         router.add(Route("") / "base" / {"dt": datetime.datetime}, POST=on_get1)
@@ -325,3 +373,24 @@ def test_validate():
             return None
 
         router.add(Route("") / "base" / {"foo"} / {"dt": int}, POST=on_get_bad_kw)
+
+
+def test_inspect():
+
+    class Thing():
+        def on_get(self, req: falcon.Request, resp: falcon.Response):
+            pass
+
+        def on_post(self, req: falcon.Request, resp: falcon.Response):
+            pass
+
+    router = Router()
+    app = falcon.App(router=router)
+
+    thing = Thing()
+    router.add_route("/api", thing)
+
+    Router.register_with_inspect()
+    Router.register_with_inspect()
+
+    print(falcon.inspect.inspect_app(app))

@@ -1,17 +1,54 @@
-from typing import Any, Awaitable, Callable, Concatenate, Final, final
+from typing import Any, Awaitable, Callable, Final, Protocol, final
 
-from falcon import App, Request, Response
-from falcon.asgi import Request as AsgiRequest
-from falcon.asgi import Response as AsgiResponse
+from falcon import Request, Response
 from falcon.routing.compiled import CompiledRouter
 
 from .route import BoundRoute, Route
 
-type Responder[TReq: Request, TResp: Response, **P] = Callable[Concatenate[TReq, TResp, P], None]
 
-type AsgiResponder[TReq: AsgiRequest, TResp: AsgiResponse, **P] = Callable[
-    Concatenate[TReq, TResp, P], None | Awaitable[None]
-]
+class Responder[TReq, TResp, TRet, **P](Protocol):
+    def __call__(
+        self, req: TReq, resp: TResp, /, *args: P.args, **kwargs: P.kwargs
+    ) -> TRet: ...
+
+
+class ImplementsGet[TReq, TResp, TRet, **P](Protocol):
+    def on_get(
+        self, req: TReq, resp: TResp, /, *args: P.args, **kwargs: P.kwargs
+    ) -> TRet: ...
+
+
+class ImplementsPost[TReq, TResp, TRet, **P](Protocol):
+    def on_post(
+        self, req: TReq, resp: TResp, /, *args: P.args, **kwargs: P.kwargs
+    ) -> TRet: ...
+
+
+class ImplementsPut[TReq, TResp, TRet, **P](Protocol):
+    def on_put(
+        self, req: TReq, resp: TResp, /, *args: P.args, **kwargs: P.kwargs
+    ) -> TRet: ...
+
+
+class ImplementsDelete[TReq, TResp, TRet, **P](Protocol):
+    def on_delete(
+        self, req: TReq, resp: TResp, /, *args: P.args, **kwargs: P.kwargs
+    ) -> TRet: ...
+
+
+class ImplementsOptions[TReq, TResp, TRet, **P](Protocol):
+    def on_options(
+        self, req: TReq, resp: TResp, /, *args: P.args, **kwargs: P.kwargs
+    ) -> TRet: ...
+
+
+type Resource[TReq, TResp, TRet, **P] = (
+    ImplementsGet[TReq, TResp, TRet, P]
+    | ImplementsPost[TReq, TResp, TRet, P]
+    | ImplementsPut[TReq, TResp, TRet, P]
+    | ImplementsDelete[TReq, TResp, TRet, P]
+    | ImplementsOptions[TReq, TResp, TRet, P]
+)
 
 
 @final
@@ -19,7 +56,7 @@ class CatchallResource:
     pass
 
 
-_catchall_resource: Final = CatchallResource()
+_CATCHALL_RESOURCE: Final = CatchallResource()
 
 
 def _parse_template(template: str):
@@ -47,12 +84,14 @@ def _validate_responder(meth: str, handler: Callable[..., Any], route: Route):
 
     # req, resp should be positional or positional-or-keyword
     if not (
-        req.kind in (Parameter.POSITIONAL_ONLY, Parameter.POSITIONAL_OR_KEYWORD) and req.default == Parameter.empty
+        req.kind in (Parameter.POSITIONAL_ONLY, Parameter.POSITIONAL_OR_KEYWORD)
+        and req.default == Parameter.empty
     ):
         raise TypeError("wrong req parameter")
 
     if not (
-        resp.kind in (Parameter.POSITIONAL_ONLY, Parameter.POSITIONAL_OR_KEYWORD) and resp.default == Parameter.empty
+        resp.kind in (Parameter.POSITIONAL_ONLY, Parameter.POSITIONAL_OR_KEYWORD)
+        and resp.default == Parameter.empty
     ):
         raise TypeError("wrong resp parameter")
 
@@ -75,13 +114,14 @@ def _validate_responder(meth: str, handler: Callable[..., Any], route: Route):
         if anno == Parameter.empty:
             raise ValueError(f"missing type annotation for parameter {param.name}")
         if anno != arg._anno:
-            raise ValueError(f"type annotation mismatch for parameter {param.name} ({anno} vs {arg._anno})")
+            raise ValueError(
+                f"type annotation mismatch for parameter {param.name} ({anno} vs {arg._anno})"
+            )
 
 
-# TODO: support ASGI responders type ?
-
-
-class Router[TReq: Request, TResp: Response](CompiledRouter):
+class Router[TReq: Request, TResp: Response, TRet: (None, Awaitable[None])](
+    CompiledRouter
+):
     """
     Note: the router class really should be type-specialized to get the
     responder signatures checking.
@@ -91,19 +131,13 @@ class Router[TReq: Request, TResp: Response](CompiledRouter):
         super().__init__()
         self._strict = strict
 
-    def add_route[
-        **P
-    ](
+    def add_route[**P](
         self,
         route: Route | str,
-        resource: object,
-        *,
-        typical_responder: Responder[TReq, TResp, P] | None = None,
+        resource: Resource[TReq, TResp, TRet, P],
         **kwargs: Any,
     ) -> BoundRoute[P]:
-        """Add route to resource with autodetected methods.
-        Supply extra typing-only argument `typical_responder` to have a typed URL in return.
-        """
+        """Add route to resource with autodetected methods"""
         if isinstance(route, str):
             route = _parse_template(route)
 
@@ -118,19 +152,17 @@ class Router[TReq: Request, TResp: Response](CompiledRouter):
         super().add_route(str(route), resource, **kwargs)
         return BoundRoute[P](route)
 
-    def add[
-        **P
-    ](
+    def add[**P](
         self,
         route: Route | str,
         *,
         # most common methods here. other (webdav etc) are via kwargs
-        GET: Responder[TReq, TResp, P] | None = None,
-        POST: Responder[TReq, TResp, P] | None = None,
-        PUT: Responder[TReq, TResp, P] | None = None,
-        DELETE: Responder[TReq, TResp, P] | None = None,
-        OPTIONS: Responder[TReq, TResp, P] | None = None,
-        **responders: Responder[TReq, TResp, P] | None,
+        GET: Responder[TReq, TResp, TRet, P] | None = None,
+        POST: Responder[TReq, TResp, TRet, P] | None = None,
+        PUT: Responder[TReq, TResp, TRet, P] | None = None,
+        DELETE: Responder[TReq, TResp, TRet, P] | None = None,
+        OPTIONS: Responder[TReq, TResp, TRet, P] | None = None,
+        **responders: Responder[TReq, TResp, TRet, P] | None,
     ) -> BoundRoute[P]:
         """Register route with the provided responders.
         Returns BoundRoute, allowing to render URL ala url_for().
@@ -160,10 +192,10 @@ class Router[TReq: Request, TResp: Response](CompiledRouter):
             **responders,
         }
 
-        by_resource: dict[object, dict[str, Responder[TReq, TResp, P]]] = {}
+        by_resource: dict[object, dict[str, Responder[TReq, TResp, Any, P]]] = {}
         for http_method, responder in by_meth.items():
             if responder:
-                resource: object = getattr(responder, "__self__", _catchall_resource)
+                resource: object = getattr(responder, "__self__", _CATCHALL_RESOURCE)
                 by_resource.setdefault(resource, {})[http_method] = responder
 
         for resource, resps in by_resource.items():
@@ -172,7 +204,9 @@ class Router[TReq: Request, TResp: Response](CompiledRouter):
                     try:
                         _validate_responder(http_method, responder, route)
                     except Exception as e:
-                        raise ValueError(f"Handler {responder} validation error: {e}") from e
+                        raise ValueError(
+                            f"Handler {responder} validation error: {e}"
+                        ) from e
             super().add_route(template, resource, _cooked=resps)
 
         return BoundRoute[P](route)
@@ -193,13 +227,11 @@ class Router[TReq: Request, TResp: Response](CompiledRouter):
         # trigger compile
         self.find("")
 
+    @classmethod
+    def register_with_inspect(cls):
+        import falcon.inspect
 
-def inspect_routes(app: App):
-    import falcon.inspect
-
-    try:
-        falcon.inspect.register_router(type(app._router))(lambda router: falcon.inspect.inspect_compiled_router(router))
-    except Exception:
-        pass
-
-    return falcon.inspect.inspect_app(app)
+        try:
+            falcon.inspect.register_router(cls)(falcon.inspect.inspect_compiled_router)
+        except Exception:
+            pass

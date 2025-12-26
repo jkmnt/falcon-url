@@ -32,21 +32,27 @@ thing_ep = Thing()
 thing_route = router.add_route("/api/{thing_id:int}/{foo}", thing_ep)
 
 url = thing_route(thing_id=1, foo="bar")
-print(url)  # /api/1/bar
+print(url)
+# /api/1/bar
 
 url = url.with_query(a=1, b=2, c=["baz", " jazz"], d=True, e=False, f=None)
-print(url)  # /api/1/bar?a=1&b=2&c=baz&c=+jazz&d=true&e=false
+print(url)
+# /api/1/bar?a=1&b=2&c=baz&c=+jazz&d=true&e=false
 
 url = url.with_fragment("article")
-print(url)  # /api/1/bar?a=1&b=2&c=baz&c=+jazz&d=true&e=false#article
+print(url)
+# /api/1/bar?a=1&b=2&c=baz&c=+jazz&d=true&e=false#article
 
 url = url.with_root("/subapp")
-print(url)  # /subapp/api/1/bar?a=1&b=2&c=baz&c=+jazz&d=true&e=false#article
+print(url)
+# /subapp/api/1/bar?a=1&b=2&c=baz&c=+jazz&d=true&e=false#article
 
 url = url.with_location("http://www.example.com")
-print(url)  # http://www.example.com/subapp/api/1/bar?a=1&b=2&c=baz&c=+jazz&d=true&e=false#article
+print(url)
+# http://www.example.com/subapp/api/1/bar?a=1&b=2&c=baz&c=+jazz&d=true&e=false#article
 
-print(url.as_html()) # http://www.example.com/subapp/api/1/bar?a=1&amp;b=2&amp;c=baz&amp;c=+jazz&amp;d=true&amp;e=false#article
+print(url.as_html())
+# http://www.example.com/subapp/api/1/bar?a=1&amp;b=2&amp;c=baz&amp;c=+jazz&amp;d=true&amp;e=false#article
 
 ```
 
@@ -70,24 +76,41 @@ router.add_route("/api/{thing_id:int}/{foo:int}", thing_ep)
 # ValueError: type annotation mismatch for parameter foo (<class 'str'> vs <class 'int'>)
 ```
 
-The router will check the match between the method arguments and route parameters.
-The types are checked too, so please add type annotations. All route-related arguments should be keyword-only.
+The router will check if method arguments and route parameters match.
+Types are checked too, so please add type annotations. All route-related arguments should be keyword-only.
 
 ## Type checking and code editor autocomplete
 
-There is no way to obtain the responder's signature from the resource class.
-But you could hint it manually. Your code editor will start to suggest parameters - a whole different experience!
+`falcom-url` binds the route object to the responder's signature. It means the route is type-safe, and your code editor is able to suggest parameters and offer autocompletion.
 
-Also, you may specialize the request and response type for more type safety.
+For more type safety, you should specialize the request, response, and return type:
 
 ```python
+router = Router[falcon.Request, falcon.Response, None](strict=True)
 
-router = Router[falcon.Request, falcon.Response](strict=True)
+thing_route = router.add_route("/api/{thing_id:int}/{foo}", thing_ep)
 
-thing_route = router.add_route("/api/{thing_id:int}/{foo}", thing_ep, typical_responder=thing_ep.on_get)
+thing_route(foo="yyy") # pyright: Argument missing for parameter "thing_id"
+thing_route(thing_id="xxx", foo="yyy") # pyright: Argument of type "Literal['xxx']" cannot be assigned to parameter "thing_id" of type "int"
+```
 
-thing_route(foo="yyy") # Argument missing for parameter "thing_id"
-thing_route(thing_id="xxx", foo="yyy") # Argument of type "Literal['xxx']" cannot be assigned to parameter "thing_id" of type "int"
+Matching ASGI responders:
+
+```python
+class SyncThing:
+    def on_get(self, req: Request, resp: Response, *, thing_id: int, foo: str) -> None: ...
+
+class AsyncThing:
+    async def on_get(self, req: Request, resp: Response, *, thing_id: int, foo: str) -> None: ...
+
+sync_thing = SyncThing()
+async_thing = AsyncThing()
+
+router = Router[asgi.Request, asgi.Response, Awaitable[None]]()
+
+router.add_route("/api/{thing_id:int}/{foo}", async_thing) # Ok
+
+router.add_route("/api/{thing_id:int}/{foo}", sync_thing) # pyright: Argument of type "SyncThing" cannot be assigned to parameter "resource" of type ...
 
 ```
 
@@ -121,20 +144,17 @@ _Promotion time_: Want to generate HTML in Python without Jinja templates?
 Check out [htmf](https://github.com/jkmnt/htmf) project of mine :-)
 
 Responders may belong to the different classes, or even be standalone functions.
-Since signatures are known, this style is typesafe out of the box.
 
 ## Object-oriented routes
 
 The `pathlib.Path` strikes again:
 
 ```python
-
 from falcon_url import Route
 
 api_root = Route("") / "api" / "v2"
 router.add_route(api_root / {"thing_id":int} / {"foo"}, thing_ep)
 router.add_route(api_root / "db" / {"table"}, table_ep)
-
 ```
 
 Or, almost the same without set/dict syntax hacks:
@@ -186,7 +206,6 @@ class MyApp:
             another = router.add(Route("") / "api" / "another" / {"foo"}, GET=another_ep.on_get)
 
         self.routes = Routes
-
 ```
 
 Or, maybe, let endpoints manage their own routes?
@@ -210,7 +229,7 @@ class MyApp:
         self.endpoints = Endpoints
 ```
 
-These patterns allow us to have well-typed route objects in an always-in-sync store.
+These patterns let us have well-typed route objects in an always-in-sync store.
 
 See the next topic for an explanation of why it's beneficial to base `Routes` on `RoutesCollection`.
 
@@ -235,7 +254,7 @@ Routes in the `RoutesCollection` _class_ are request-independent. Routes in the 
 are request-specific.
 
 ```python
- def on_get(self, req: Request, resp: Response, *, thing_id: int):
+def on_get(self, req: Request, resp: Response, *, thing_id: int):
     # now these routes have the root_path of the request
     req_specific_routes = self.app.routes(root_path=req.root_path)
     # including this one
@@ -319,7 +338,3 @@ def from_json(cls, req: Request):
     b = json["b"]
     ...
 ```
-
-## ASGI support
-
-The typing for ASGI responders is on the roadmap. Meanwhile, at runtime everything should be fine.

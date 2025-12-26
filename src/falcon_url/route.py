@@ -64,7 +64,7 @@ class Route:
     """Immutable route template. Route consist of segments with static and dynamic parts.
     The division operator is overloaded to allow composing ala pathlib.Path:
     ```
-    Route("") / "foo" / "bar" / IntParam("thing") / Param("user") / ""
+    Route("") / "foo" / "bar" / param.Int("thing") / param.Str("user") / ""
     ```
     """
 
@@ -202,13 +202,13 @@ class RouteSegment:
     """Immutable route segment between slash separators.
     May consist of strings and parameters:
     ```
-    RouteSegment("head-', Param("op"), "-tail)
+    RouteSegment("head-', param.Str("op"), "-tail)
     ```
     encodes the `head-{op}-tail` segment with dynamic `op`.
 
     Such segments could also be created with `+` operation:
     ```
-    Route("") / ("head-" + Param("op") + "-tail") / "foo"
+    Route("") / ("head-" + param.Str("op") + "-tail") / "foo"
     ```
     """
 
