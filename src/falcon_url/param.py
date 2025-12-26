@@ -2,7 +2,7 @@
 
 import datetime
 import uuid
-from typing import Any, Final
+from typing import Final
 
 from .route import RouteParam
 
@@ -105,6 +105,3 @@ class Path(RouteParam, id="path", anno=str, is_multisegment=True):
 
     def interpolate(self, val: str):
         return val
-
-    def __add__(self, right: Any):
-        return NotImplemented

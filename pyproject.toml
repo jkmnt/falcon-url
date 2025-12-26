@@ -39,6 +39,7 @@ select = [
     "INT",
     "RUF",
     "PLE",
+    "T20"
 ]
 
 ignore = ["SIM108", "FBT003", "RET504", "RET505", "E501", "RUF015", "UP035"]

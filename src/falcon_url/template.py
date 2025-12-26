@@ -75,7 +75,6 @@ def _parse_param(template: str) -> RouteParam:
         return param.Str(name)
 
     cls, args, kwargs = _parse_args(splits[1])
-    print(cls, args, kwargs)
     return cls(name, *args, **kwargs)
 
 

@@ -90,6 +90,8 @@ router = Router[falcon.Request, falcon.Response, None](strict=True)
 
 thing_route = router.add_route("/api/{thing_id:int}/{foo}", thing_ep)
 
+reveal_type(thing_route) # pyright: Type of "thing_route" is "BoundRoute[(*, thing_id: int, foo: str)]
+
 thing_route(foo="yyy") # pyright: Argument missing for parameter "thing_id"
 thing_route(thing_id="xxx", foo="yyy") # pyright: Argument of type "Literal['xxx']" cannot be assigned to parameter "thing_id" of type "int"
 ```

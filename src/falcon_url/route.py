@@ -94,9 +94,6 @@ class Route:
     ):
         return Route(RouteSegment.from_parts(left), *self.segments)
 
-    def _get_parts(self):
-        return [part for seg in self.segments for part in seg.parts]
-
     def _get_params(self):
         return [part for seg in self.segments for part in seg._get_params()]
 
@@ -125,10 +122,6 @@ class Route:
     @classmethod
     def root(cls):
         return cls("")
-
-
-# To be renamed. Or maybe just combined with the Route ? The route may be Param-specced and specialized
-# at the call time
 
 
 class BoundRoute[**P]:
@@ -165,37 +158,6 @@ class BoundRoute[**P]:
     ):
         """Make class with signature borrowed from callable"""
         return BoundRoute[P](route, root_path=root_path)
-
-
-# TODO: add the global loc too ?
-class RoutesCollection:
-    """Container for the BoundRoutes.
-    Instance of the cointainer provides common `root_path` to the routes.
-    """
-
-    def __init__(self, *, root_path: str | None = None):
-        self.root_path = root_path
-
-    @classmethod
-    def desc(cls) -> RouteCollectionDescriptor[Self]:
-        """Wraps class with the descriptor, simplifying usage inside another
-        RoutesCollection"""
-        return RouteCollectionDescriptor(cls)
-
-
-# XXX: Could we combine RoutesCollection and RouteCollectionDescriptor in a single class ?
-# maybe with some overloads ... ?
-class RouteCollectionDescriptor[T: RoutesCollection]:
-    """Allows using RouteCollection inside another RouteCollection with automatic
-    propagation of root_path"""
-
-    __slots__ = ("cls",)
-
-    def __init__(self, cls: type[T]):
-        self.cls = cls
-
-    def __get__(self, obj: object | None, objtype: Any = None):
-        return self.cls(root_path=getattr(obj, "root_path", None))
 
 
 class RouteSegment:
@@ -273,6 +235,37 @@ class RouteSegment:
                 part = ctor(name)
             parts.append(part)
         return cls(*parts)
+
+
+# TODO: add the global loc too ?
+class RoutesCollection:
+    """Container for the BoundRoutes.
+    Instance of the cointainer provides common `root_path` to the routes.
+    """
+
+    def __init__(self, *, root_path: str | None = None):
+        self.root_path = root_path
+
+    @classmethod
+    def desc(cls) -> RouteCollectionDescriptor[Self]:
+        """Wraps class with the descriptor, simplifying usage inside another
+        RoutesCollection"""
+        return RouteCollectionDescriptor(cls)
+
+
+# TODO: Could we combine RoutesCollection and RouteCollectionDescriptor in a single class ?
+# maybe with some overloads ... ?
+class RouteCollectionDescriptor[T: RoutesCollection]:
+    """Allows using RouteCollection inside another RouteCollection with automatic
+    propagation of root_path"""
+
+    __slots__ = ("cls",)
+
+    def __init__(self, cls: type[T]):
+        self.cls = cls
+
+    def __get__(self, obj: object | None, objtype: Any = None):
+        return self.cls(root_path=getattr(obj, "root_path", None))
 
 
 RouteParamSpec = (

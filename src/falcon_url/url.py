@@ -37,7 +37,7 @@ class Url:
     ```
     """
 
-    __slots__ = ("_frag", "_loc", "_query", "_root", "_segments")
+    __slots__ = ("fragment", "location", "query", "root", "segments")
 
     def __init__(
         self,
@@ -47,29 +47,29 @@ class Url:
         query: Sequence[tuple[str, str]] | None = None,
         fragment: str | None = None,
     ):
-        self._root: Final = root
-        self._loc: Final = location
-        self._segments: Final = segments
-        self._query: Final = query
-        self._frag: Final = fragment
+        self.root: Final = root
+        self.location: Final = location
+        self.segments: Final = segments
+        self.query: Final = query
+        self.fragment: Final = fragment
 
     # cache ?
     def as_str(self):
         """Render as quoted (percent-encoded) string"""
-        segments = self._segments
-        if self._root is not None:
-            segments = [self._root, *segments]
+        segments = self.segments
+        if self.root is not None:
+            segments = [self.root, *segments]
         url = "/".join(segments)
         url = quote(url)
-        if self._loc:
-            url = self._loc + url
+        if self.location:
+            url = self.location + url
 
-        if self._query:
-            qs = urlencode(self._query, doseq=True)
+        if self.query:
+            qs = urlencode(self.query, doseq=True)
             if qs:
                 url += f"?{qs}"
-        if self._frag is not None:
-            url += f"#{quote(self._frag)}"
+        if self.fragment is not None:
+            url += f"#{quote(self.fragment)}"
         return url
 
     def as_html(self):
@@ -77,15 +77,15 @@ class Url:
         return html.escape(self.as_str())
 
     def __getitem__(self, index_or_slice: int | slice):
-        segments = self._segments[index_or_slice]
+        segments = self.segments[index_or_slice]
         if not isinstance(segments, tuple):
             segments = (segments,)
         return Url(
-            self._root,
+            self.root,
             *segments,
-            location=self._loc,
-            query=self._query,
-            fragment=self._frag,
+            location=self.location,
+            query=self.query,
+            fragment=self.fragment,
         )
 
     def __bytes__(self):
@@ -93,28 +93,28 @@ class Url:
 
     def __truediv__(self, right: str):
         return Url(
-            self._root,
-            *self._segments,
+            self.root,
+            *self.segments,
             right,
-            location=self._loc,
-            query=self._query,
-            fragment=self._frag,
+            location=self.location,
+            query=self.query,
+            fragment=self.fragment,
         )
 
     def __rtruediv__(self, left: str):
         return Url(
-            self._root,
+            self.root,
             left,
-            *self._segments,
-            location=self._loc,
-            query=self._query,
-            fragment=self._frag,
+            *self.segments,
+            location=self.location,
+            query=self.query,
+            fragment=self.fragment,
         )
 
     # hash is inprecise, since query key-values are hashed as is without processing.
     # But good enough for practical purposes, that is objects with same hash should compare equal
     def __hash__(self):
-        return hash((self._loc, self._root, self._segments, self._query, self._frag))
+        return hash((self.location, self.root, self.segments, self.query, self.fragment))
 
     def __eq__(self, other: object):
         if not isinstance(other, Url):
@@ -127,11 +127,11 @@ class Url:
         """Make new URL with the location changed. Location is schema, netloc and port (
         for example, "http://www.example.com"). Location is NOT quoted"""
         return Url(
-            self._root,
-            *self._segments,
+            self.root,
+            *self.segments,
             location=location,
-            query=self._query,
-            fragment=self._frag,
+            query=self.query,
+            fragment=self.fragment,
         )
 
     def with_query(self, **keyvals: QArg | None):
@@ -147,21 +147,21 @@ class Url:
         """
         qs = _make_qs(keyvals.items())
         return Url(
-            self._root,
-            *self._segments,
-            location=self._loc,
+            self.root,
+            *self.segments,
+            location=self.location,
             query=qs,
-            fragment=self._frag,
+            fragment=self.fragment,
         )
 
     def with_fragment(self, fragment: str):
         """Make new URL with the fragment (aka #hash) changed. Fragment should not include #,
         it would be added automatically."""
         return Url(
-            self._root,
-            *self._segments,
-            location=self._loc,
-            query=self._query,
+            self.root,
+            *self.segments,
+            location=self.location,
+            query=self.query,
             fragment=fragment,
         )
 
@@ -171,10 +171,10 @@ class Url:
         """
         return Url(
             root,
-            *self._segments,
-            location=self._loc,
-            query=self._query,
-            fragment=self._frag,
+            *self.segments,
+            location=self.location,
+            query=self.query,
+            fragment=self.fragment,
         )
 
     __str__ = as_str

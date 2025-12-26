@@ -8,6 +8,7 @@ import pytest
 import falcon
 import falcon.inspect
 from falcon_url import Route, Router, RoutesCollection, param
+from falcon_url.template import ArgParseError
 
 
 def test_int():
@@ -38,6 +39,8 @@ def test_float():
 
     assert str(param.Float("foo", max=0)) == "{foo:float(max=0)}"
 
+    assert param.Float("a").interpolate(3) == "3.0"
+
 
 def test_dt():
     assert str(param.Datetime("foo")) == "{foo:dt}"
@@ -59,20 +62,26 @@ def test_route_kitchen():
         / param.Float("float1")
         / ""
         / param.Uuid("uuid1")
+        / param.Path("rest")
         / ""
     )
 
-    assert str(route) == "/foo/bar/{str1}/{int1:int}/sep/{float1:float}//{uuid1:uuid}/"
+    assert (
+        str(route)
+        == "/foo/bar/{str1}/{int1:int}/sep/{float1:float}//{uuid1:uuid}/{rest:path}/"
+    )
     uuid1 = uuid.uuid4()
 
     assert (
-        str(route.as_url(str1="1", int1=2, float1=3.14, uuid1=uuid1))
-        == f"/foo/bar/1/2/sep/3.14//{uuid1}/"
+        str(
+            route.as_url(
+                str1="1", int1=2, float1=3.14, uuid1=uuid1, rest="really/anything/"
+            )
+        )
+        == f"/foo/bar/1/2/sep/3.14//{uuid1}/really/anything//"
     )
 
     assert str(Route("")) == ""
-
-    assert param.Float("a").interpolate(3) == "3.0"
 
 
 def test_route_escape():
@@ -124,9 +133,17 @@ def test_partial_segments():
         Route("")
         / ("foo" + "bar_" + param.Int("why") + ":" + param.Uuid("uu") + "-baz")
         / "bar"
+        / ("f" + (param.Int("zoo") + "x"))
     )
 
-    assert str(route) == "/foobar_{why:int}:{uu:uuid}-baz/bar"
+    assert str(route) == "/foobar_{why:int}:{uu:uuid}-baz/bar/f{zoo:int}x"
+
+    segments = [seg for seg in route]
+    assert str(Route(*segments)) == str(route)
+
+    route = "prefix" / route[2]
+
+    assert str(route) == "prefix/bar"
 
 
 def test_prefix():
@@ -225,6 +242,24 @@ def test_parse_template():
     bget = rb.add(template, GET=res.on_get)
     assert str(aget) == str(bget)
     assert str(aget) == template
+
+    with pytest.raises(KeyError):
+        Router().add("/{foo:bla}")
+
+    with pytest.raises(ArgParseError):
+        Router().add("/{foo::}")
+    with pytest.raises(ArgParseError):
+        Router().add("/{foo:(2,3)}")
+    with pytest.raises(TypeError):
+        Router().add("/{foo:int(2,3,4,5)}")
+    with pytest.raises(ArgParseError):
+        Router().add("/{foo:int(1 if 2 else True)}")
+    with pytest.raises(ArgParseError):
+        Router().add("/{foo:int(arg=1 if 2 else True)}")
+    with pytest.raises(ArgParseError):
+        Router().add("/{foo:import math}")
+    with pytest.raises(ArgParseError):
+        Router().add("/{foo:int([1 for i in range(5)])}")
 
 
 def test_magic():
@@ -374,10 +409,37 @@ def test_validate():
 
         router.add(Route("") / "base" / {"foo"} / {"dt": int}, POST=on_get_bad_kw)
 
+    with pytest.raises(ValueError, match="missing type"):
+
+        def on_post3(req: Any, resp: Any, *, foo):
+            return None
+
+        router.add(Route("") / "base" / {"foo"} / {"foo": int}, POST=on_post3)
+
+    with pytest.raises(ValueError, match="must begin with slash"):
+        router.add(Route(""), GET=on_get1)
+
+    with pytest.raises(ValueError, match="must begin with slash"):
+        router.add(Route(), GET=on_get1)
+
+    with pytest.raises(ValueError, match="must begin with slash"):
+        router.add(Route("root"), GET=on_get1)
+
+    class Resource:
+        def on_get(self, req: Any, resp: Any, *, foo: str):
+            return None
+
+    r = Resource()
+
+    with pytest.raises(ValueError, match="must begin with slash"):
+        router.add_route(Route("root"), r)
+
+    with pytest.raises(ValueError, match="no matching argument"):
+        router.add_route(Route("") / {"moo"}, r)
+
 
 def test_inspect():
-
-    class Thing():
+    class Thing:
         def on_get(self, req: falcon.Request, resp: falcon.Response):
             pass
 
@@ -393,4 +455,40 @@ def test_inspect():
     Router.register_with_inspect()
     Router.register_with_inspect()
 
-    print(falcon.inspect.inspect_app(app))
+    falcon.inspect.inspect_app(app)
+
+
+def test_url_methods():
+    route = Route("") / "foo" / "bar" / param.Str("str1") / param.Int("int1")
+    assert str(route) == "/foo/bar/{str1}/{int1:int}"
+    url = route.as_url(str1="1", int1=12)
+    assert str(url) == "/foo/bar/1/12"
+
+    assert str("head" / url / "tail") == "/head/foo/bar/1/12/tail"
+
+    assert bytes(url) == b"/foo/bar/1/12"
+
+    assert url.with_query(a=1, b=2).as_html() == "/foo/bar/1/12?a=1&amp;b=2"
+
+    #
+    same_url = route.as_url(str1="1", int1=12)
+    # eq
+    assert url == same_url
+    assert url == url
+    assert url != True
+    assert url != False
+    assert url != route.as_url(str1="1", int1=13)
+
+    # hash
+    dict_ = {url: 5}
+    assert dict_[url] == 5
+    assert dict_[same_url] == 5
+    assert url in dict_
+    assert same_url in dict_
+
+    # index/slice. is it correct ?
+
+    assert str(url[0].with_root("api")) == "api/foo"
+    assert str(url[1].with_root("api")) == "api/bar"
+    assert str(url[-1].with_root("api")) == "api/12"
+    assert str(url[::-1].with_root("api")) == "api/12/1/bar/foo"
