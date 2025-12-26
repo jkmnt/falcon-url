@@ -7,7 +7,7 @@ import pytest
 
 import falcon
 import falcon.inspect
-from falcon_url import Route, Router, RoutesCollection, param
+from falcon_url import Route, Router, RoutesCollection, param, Url
 from falcon_url.template import ArgParseError
 
 
@@ -118,6 +118,9 @@ def test_route_frag():
     )
 
     assert str(route.as_url(str1="1", int1=12).with_fragment("")) == "/foo/bar/1/12#"
+
+    assert str(Url(None)) == ""
+    assert str(Url(None).with_fragment("")) == "#"
 
 
 def test_partial_segments():
