@@ -8,7 +8,9 @@ The router really just adds a few methods to the stock one, so the core routing 
 
 # Installation
 
-`falcon-url` is not on PyPI (yet). Download and install it locally.
+```shell
+pip install falcon-url
+```
 
 # Basic usage
 
