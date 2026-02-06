@@ -43,3 +43,17 @@ select = [
 ]
 
 ignore = ["SIM108", "FBT003", "RET504", "RET505", "E501", "RUF015", "UP035"]
+
+[tool.pyright]
+# typeCheckingMode = "strict"
+typeCheckingMode = "standard"
+useLibraryCodeForTypes = true
+strictListInference = true
+strictSetInference = true
+strictDictionaryInference = true
+reportMissingImports = "error"
+# reportMissingTypeStubs = "none"
+reportMissingParameterType = "warning"
+reportUnnecessaryComparison = "information"
+reportUnnecessaryContains = "information"
+reportPrivateUsage = false

@@ -1,11 +1,11 @@
 """Falcon router with url_for-like support"""
 
-__version__ = "0.1.1"
+__version__ = "0.1.2"
 
 from . import param
 from .route import (
-    Route,
     BoundRoute,
+    Route,
     RouteParam,
     RoutesCollection,
     RouteSegment,

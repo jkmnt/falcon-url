@@ -10,10 +10,10 @@ from .route import RouteParam
 class Str(RouteParam, id="", anno=str, shortcut=str):
     """Route parameter: string"""
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"{{{self.id}}}"
 
-    def interpolate(self, val: str):
+    def interpolate(self, val: str) -> str:
         return val
 
 
@@ -41,7 +41,7 @@ class Int(RouteParam, id="int", anno=int, shortcut=int):
             f"max={self.max}" if self.max is not None else None,
         ]
 
-    def interpolate(self, val: int):
+    def interpolate(self, val: int) -> str:
         return str(int(val))
 
 
@@ -69,14 +69,14 @@ class Float(RouteParam, id="float", anno=float, shortcut=float):
             "finite=False" if not self.finite else None,
         ]
 
-    def interpolate(self, val: float):
+    def interpolate(self, val: float) -> str:
         return str(float(val))
 
 
 class Uuid(RouteParam, id="uuid", anno=uuid.UUID, shortcut=uuid.UUID):
     """Route parameter: uuid"""
 
-    def interpolate(self, val: uuid.UUID):
+    def interpolate(self, val: uuid.UUID) -> str:
         return str(val)
 
 
@@ -96,12 +96,12 @@ class Datetime(RouteParam, id="dt", anno=datetime.datetime, shortcut=datetime.da
     def get_cfg(self) -> list[str | None]:
         return [f'"{self.format_string}"' if self.format_string else None]
 
-    def interpolate(self, val: datetime.datetime):
+    def interpolate(self, val: datetime.datetime) -> str:
         return val.strftime(self.format_string or "%Y-%m-%dT%H:%M:%S%z")
 
 
 class Path(RouteParam, id="path", anno=str, is_multisegment=True):
     """Route parameter: path. Consumes all remaining segments"""
 
-    def interpolate(self, val: str):
+    def interpolate(self, val: str) -> str:
         return val

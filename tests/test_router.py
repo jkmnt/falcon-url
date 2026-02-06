@@ -3,11 +3,11 @@ import datetime
 import uuid
 from typing import Any
 
-import pytest
-
 import falcon
 import falcon.inspect
-from falcon_url import Route, Router, RoutesCollection, param, Url
+import pytest
+
+from falcon_url import Route, Router, RoutesCollection, Url, param
 from falcon_url.template import ArgParseError
 
 
@@ -414,7 +414,7 @@ def test_validate():
 
     with pytest.raises(ValueError, match="missing type"):
 
-        def on_post3(req: Any, resp: Any, *, foo):
+        def on_post3(req: Any, resp: Any, *, foo): # type: ignore
             return None
 
         router.add(Route("") / "base" / {"foo"} / {"foo": int}, POST=on_post3)

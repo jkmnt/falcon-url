@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Callable, ClassVar, Final, Mapping, Self
+from typing import Any, Callable, ClassVar, Final, Iterator, Mapping, Self
 
 from .url import Url
 
@@ -25,7 +25,7 @@ class RouteParam:
     def get_cfg(self) -> list[str | None]:
         return []
 
-    def __str__(self):
+    def __str__(self) -> str:
         params = ", ".join(param for param in self.get_cfg() if param is not None)
         if not params:
             return f"{{{self.id}:{self._type_id}}}"
@@ -34,13 +34,13 @@ class RouteParam:
     def __add__(
         self,
         right: str | RouteParamSpec | RouteSegment | tuple[str | RouteParamSpec, ...],
-    ):
+    ) -> RouteSegment:
         return RouteSegment(self, *RouteSegment.from_parts(right))
 
     def __radd__(
         self,
         left: str | RouteParamSpec | RouteSegment | tuple[str | RouteParamSpec, ...],
-    ):
+    ) -> RouteSegment:
         return RouteSegment(*RouteSegment.from_parts(left), self)
 
     def __init_subclass__(
@@ -50,7 +50,7 @@ class RouteParam:
         anno: type,
         shortcut: type | None = None,
         is_multisegment: bool = False,
-    ):
+    ) -> None:
         cls._type_id = id
         cls._anno = anno
         cls._is_multisegment = is_multisegment
@@ -71,39 +71,39 @@ class Route:
     __slots__ = ("segments",)
 
     def __init__(self, *segments: str | RouteSegment):
-        self.segments = tuple(
+        self.segments: Final = tuple(
             seg if isinstance(seg, RouteSegment) else RouteSegment(seg)
             for seg in segments
         )
 
-    def __str__(self):
+    def __str__(self) -> str:
         return "/".join([str(seg) for seg in self.segments])
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[RouteSegment]:
         yield from self.segments
 
     def __truediv__(
         self,
         right: str | RouteSegment | RouteParamSpec | tuple[str | RouteParamSpec, ...],
-    ):
+    ) -> Route:
         return Route(*self.segments, RouteSegment.from_parts(right))
 
     def __rtruediv__(
         self,
         left: str | RouteSegment | RouteParamSpec | tuple[str | RouteParamSpec, ...],
-    ):
+    ) -> Route:
         return Route(RouteSegment.from_parts(left), *self.segments)
 
-    def _get_params(self):
+    def _get_params(self) -> list[RouteParam]:
         return [part for seg in self.segments for part in seg._get_params()]
 
-    def __getitem__(self, index_or_slice: int | slice):
+    def __getitem__(self, index_or_slice: int | slice) -> Route:
         segments = self.segments[index_or_slice]
         if not isinstance(segments, tuple):
             segments = (segments,)
         return Route(*segments)
 
-    def as_url(self, **params: Any):
+    def as_url(self, **params: Any) -> Url:
         """Resolve route to the URL substituting parameters from the provided keyword arguments"""
         segments: list[str] = []
 
@@ -120,7 +120,7 @@ class Route:
         return Url(*segments)
 
     @classmethod
-    def root(cls):
+    def root(cls) -> Self:
         return cls("")
 
 
@@ -147,7 +147,7 @@ class BoundRoute[**P]:
     def __get__(self, obj: object | None, objtype: Any = None) -> BoundRoute[P]:
         return type(self)(self.route, root_path=getattr(obj, "root_path", None))
 
-    def __str__(self):
+    def __str__(self) -> str:
         return str(self.route)
 
     __call__ = resolve
@@ -155,9 +155,9 @@ class BoundRoute[**P]:
     @staticmethod
     def from_simple_callable[**Pc](
         route: Route, _func: Callable[P, Any], root_path: str | None = None
-    ):
+    ) -> BoundRoute[P]:
         """Make class with signature borrowed from callable"""
-        return BoundRoute[P](route, root_path=root_path)
+        return BoundRoute(route, root_path=root_path)
 
 
 class RouteSegment:
@@ -179,31 +179,32 @@ class RouteSegment:
     def __init__(self, *items: RouteParam | str):
         self.parts: Final = items
 
-    def __str__(self):
+    def __str__(self) -> str:
         return "".join(str(part) for part in self.parts)
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[RouteParam | str]:
         yield from self.parts
 
-    def _get_params(self):
+    def _get_params(self) -> list[RouteParam]:
         return [part for part in self.parts if isinstance(part, RouteParam)]
 
     def __add__(
         self,
         right: str | RouteParamSpec | RouteSegment | tuple[str | RouteParamSpec, ...],
-    ):
+    ) -> RouteSegment:
         return RouteSegment(*self, *RouteSegment.from_parts(right))
 
     def __radd__(
         self,
         left: str | RouteParamSpec | RouteSegment | tuple[str | RouteParamSpec, ...],
-    ):
+    ) -> RouteSegment:
         return RouteSegment(*RouteSegment.from_parts(left), *self)
 
     @classmethod
     def from_parts(
-        cls, spec: str | RouteParamSpec | RouteSegment | tuple[str | RouteParamSpec, ...]
-    ):
+        cls,
+        spec: str | RouteParamSpec | RouteSegment | tuple[str | RouteParamSpec, ...],
+    ) -> Self:
         if isinstance(spec, (RouteSegment, tuple)):
             items = spec
         else:
@@ -262,9 +263,9 @@ class RouteCollectionDescriptor[T: RoutesCollection]:
     __slots__ = ("cls",)
 
     def __init__(self, cls: type[T]):
-        self.cls = cls
+        self.cls: Final = cls
 
-    def __get__(self, obj: object | None, objtype: Any = None):
+    def __get__(self, obj: object | None, objtype: Any = None) -> T:
         return self.cls(root_path=getattr(obj, "root_path", None))
 
 

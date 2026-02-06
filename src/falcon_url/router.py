@@ -59,14 +59,14 @@ class CatchallResource:
 _CATCHALL_RESOURCE: Final = CatchallResource()
 
 
-def _parse_template(template: str):
+def _parse_template(template: str) -> Route:
     # do not import until really required
     from .template import parse_template
 
     return parse_template(template)
 
 
-def _validate_responder(meth: str, handler: Callable[..., Any], route: Route):
+def _validate_responder(meth: str, handler: Callable[..., Any], route: Route) -> None:
     import inspect
     from inspect import Parameter
 
@@ -131,26 +131,25 @@ class Router[TReq: Request, TResp: Response, TRet: (None, Awaitable[None])](
         super().__init__()
         self._strict = strict
 
-    def add_route[**P](
+    def add_route[**P](  # type: ignore[override]
         self,
         route: Route | str,
         resource: Resource[TReq, TResp, TRet, P],
         **kwargs: Any,
     ) -> BoundRoute[P]:
         """Add route to resource with autodetected methods"""
-        if isinstance(route, str):
-            route = _parse_template(route)
+        route_obj = _parse_template(route) if isinstance(route, str) else route
 
-        if not str(route).startswith("/"):
-            raise ValueError(f"route must begin with slash ({route!s})")
+        if not str(route_obj).startswith("/"):
+            raise ValueError(f"route must begin with slash ({route_obj!s})")
 
         if self._strict:
             methods = super().map_http_methods(resource, **kwargs)
             for http_method, responder in methods.items():
-                _validate_responder(http_method, responder, route)
+                _validate_responder(http_method, responder, route_obj)
 
-        super().add_route(str(route), resource, **kwargs)
-        return BoundRoute[P](route)
+        super().add_route(str(route_obj), resource, **kwargs)
+        return BoundRoute[P](route_obj)
 
     def add[**P](
         self,
@@ -174,10 +173,9 @@ class Router[TReq: Request, TResp: Response, TRet: (None, Awaitable[None])](
 
         Maybe this restriction could be lifted in the future.
         """
-        if isinstance(route, str):
-            route = _parse_template(route)
+        route_obj = _parse_template(route) if isinstance(route, str) else route
 
-        template = str(route)
+        template = str(route_obj)
 
         if not template.startswith("/"):
             raise ValueError(f"route must begin with slash ({template})")
@@ -202,14 +200,14 @@ class Router[TReq: Request, TResp: Response, TRet: (None, Awaitable[None])](
             for http_method, responder in resps.items():
                 if self._strict:
                     try:
-                        _validate_responder(http_method, responder, route)
+                        _validate_responder(http_method, responder, route_obj)
                     except Exception as e:
                         raise ValueError(
                             f"Handler {responder} validation error: {e}"
                         ) from e
             super().add_route(template, resource, _cooked=resps)
 
-        return BoundRoute[P](route)
+        return BoundRoute[P](route_obj)
 
     def map_http_methods(
         self,
@@ -218,17 +216,17 @@ class Router[TReq: Request, TResp: Response, TRet: (None, Awaitable[None])](
         # for direct registration
         _cooked: dict[str, Callable[..., None]] | None = None,
         **kwargs: Any,
-    ):
+    ) -> dict[str, Any]:
         if _cooked:
             return _cooked
         return super().map_http_methods(resource, **kwargs)
 
-    def compile(self):
+    def compile(self) -> None:
         # trigger compile
         self.find("")
 
     @classmethod
-    def register_with_inspect(cls):
+    def register_with_inspect(cls) -> None:
         import falcon.inspect
 
         try:

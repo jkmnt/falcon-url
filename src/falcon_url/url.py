@@ -5,7 +5,7 @@ from urllib.parse import quote, urlencode
 QArg = str | bool | int | float | Iterable[str | bool | int | float]
 
 
-def _tostr(v: str | bool | int | float):  # noqa: FBT001
+def _tostr(v: str | bool | int | float) -> str:  # noqa: FBT001
     if v is True:
         return "true"
     if v is False:
@@ -13,7 +13,7 @@ def _tostr(v: str | bool | int | float):  # noqa: FBT001
     return str(v)
 
 
-def _make_qs(args: Iterable[tuple[str, QArg | None]]):
+def _make_qs(args: Iterable[tuple[str, QArg | None]]) -> list[tuple[str, str]]:
     query: list[tuple[str, str]] = []
 
     for k, v in args:
@@ -54,9 +54,9 @@ class Url:
         self.fragment: Final = fragment
 
     # cache ?
-    def as_str(self):
+    def as_str(self) -> str:
         """Render as quoted (percent-encoded) string"""
-        segments = self.segments
+        segments: Iterable[str] = self.segments
         if self.root is not None:
             segments = [self.root, *segments]
         url = "/".join(segments)
@@ -72,11 +72,11 @@ class Url:
             url += f"#{quote(self.fragment)}"
         return url
 
-    def as_html(self):
+    def as_html(self) -> str:
         """Render as HTML-safe string for direct inclusion in markup"""
         return html.escape(self.as_str())
 
-    def __getitem__(self, index_or_slice: int | slice):
+    def __getitem__(self, index_or_slice: int | slice) -> "Url":
         segments = self.segments[index_or_slice]
         if not isinstance(segments, tuple):
             segments = (segments,)
@@ -88,10 +88,10 @@ class Url:
             fragment=self.fragment,
         )
 
-    def __bytes__(self):
+    def __bytes__(self) -> bytes:
         return self.as_str().encode("ascii")
 
-    def __truediv__(self, right: str):
+    def __truediv__(self, right: str) -> "Url":
         return Url(
             self.root,
             *self.segments,
@@ -101,7 +101,7 @@ class Url:
             fragment=self.fragment,
         )
 
-    def __rtruediv__(self, left: str):
+    def __rtruediv__(self, left: str) -> "Url":
         return Url(
             self.root,
             left,
@@ -113,17 +113,19 @@ class Url:
 
     # hash is inprecise, since query key-values are hashed as is without processing.
     # But good enough for practical purposes, that is objects with same hash should compare equal
-    def __hash__(self):
-        return hash((self.location, self.root, self.segments, self.query, self.fragment))
+    def __hash__(self) -> int:
+        return hash(
+            (self.location, self.root, self.segments, self.query, self.fragment)
+        )
 
-    def __eq__(self, other: object):
+    def __eq__(self, other: object) -> bool:
         if not isinstance(other, Url):
             return NotImplemented
         if other is self:
             return True
         return self.as_str() == other.as_str()
 
-    def with_location(self, location: str):
+    def with_location(self, location: str) -> "Url":
         """Make new URL with the location changed. Location is schema, netloc and port (
         for example, "http://www.example.com"). Location is NOT quoted"""
         return Url(
@@ -134,7 +136,7 @@ class Url:
             fragment=self.fragment,
         )
 
-    def with_query(self, **keyvals: QArg | None):
+    def with_query(self, **keyvals: QArg | None) -> "Url":
         """Make new URL with the query part changed. Keyvals are key:value mapping,
         for example
         ```
@@ -154,7 +156,7 @@ class Url:
             fragment=self.fragment,
         )
 
-    def with_fragment(self, fragment: str):
+    def with_fragment(self, fragment: str) -> "Url":
         """Make new URL with the fragment (aka #hash) changed. Fragment should not include #,
         it would be added automatically."""
         return Url(
@@ -165,7 +167,7 @@ class Url:
             fragment=fragment,
         )
 
-    def with_root(self, root: str):
+    def with_root(self, root: str) -> "Url":
         """Make new URL with the root prefix changed. Root prefix may contain slashes.
         This is intended for rebasing URL to the different subpath via WSGI SCRIPT_NAME.
         """

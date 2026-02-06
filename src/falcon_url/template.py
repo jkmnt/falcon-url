@@ -10,7 +10,7 @@ class ArgParseError(ValueError):
     pass
 
 
-def _process_ast_arg(expr: ast.expr):
+def _process_ast_arg(expr: ast.expr) -> Any:
     neg = False
     if isinstance(expr, ast.UnaryOp):
         if isinstance(expr.op, ast.USub):
@@ -31,7 +31,7 @@ def _process_ast_arg(expr: ast.expr):
     return value.value
 
 
-def _parse_args(spec: str):
+def _parse_args(spec: str) -> tuple[type[RouteParam], list[Any], dict[str, Any]]:
     params: list[Any] = []
     kw_params: dict[str, Any] = {}
 
